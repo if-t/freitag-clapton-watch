@@ -21,9 +21,22 @@ Python 3.12, standard library only — no dependencies.
 
 ## Setup
 
-1. **Create a Slack Incoming Webhook** at <https://api.slack.com/apps> → your app →
-   *Incoming Webhooks* → *Add New Webhook to Workspace* → pick the channel or your own DM.
-   Copy the `https://hooks.slack.com/services/...` URL.
+1. **Create a Slack Workflow Builder webhook.** In Workflow Builder, start a new workflow
+   *From a webhook*, and declare exactly these four text variables on the trigger:
+
+   | Variable | Example |
+   | --- | --- |
+   | `title` | `F155 CLAPTON — königsblau` |
+   | `price` | `315.00 EUR` |
+   | `url` | `https://freitag.ch/en_DE/products/f155-clapton?v=000003886212` |
+   | `image` | `https://frtg-product-images.s3.amazonaws.com/...png` |
+
+   Add a *Send a message* step, drop those variables into the message text, then **Publish**
+   the workflow — a webhook trigger returns `workflow_not_published` until you do. Copy the
+   `https://hooks.slack.com/triggers/...` URL.
+
+   The names must match exactly: Slack rejects the request if a declared variable is missing
+   or an unexpected one is sent. Message layout lives in the workflow step, not in the code.
 
 2. **Add it as a repo secret** so the workflow can use it:
 
@@ -62,6 +75,11 @@ built, so the first run is quiet instead of announcing all of them.
   script — that bag gets announced again.
 
 ## Failure behaviour
+
+A Slack rejection counts as a failure too: Slack answers `200` with `{"ok": false}` for a
+bad payload, so the script inspects the response body and treats that as an error rather
+than a delivered message. State is left untouched, so the bag is retried next run.
+
 
 If the fetch fails, the `__NEXT_DATA__` blob can't be parsed, or the page yields zero
 in-stock bags, the script exits non-zero and **leaves `state/seen.json` untouched**. That

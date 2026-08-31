@@ -117,21 +117,19 @@ def describe(bag):
 
 
 def notify(webhook_url, bag):
-    title = describe(bag)
-    blocks = [
-        {
-            "type": "section",
-            "text": {
-                "type": "mrkdwn",
-                "text": f"*New <{bag['url']}|{title}>*\n{bag['price']} · `{bag['sku']}`",
-            },
-        }
-    ]
-    if bag["image"]:
-        blocks.append({"type": "image", "image_url": bag["image"], "alt_text": title})
+    """POST to a Slack Workflow Builder webhook trigger.
 
+    The keys below must match the variables declared on the trigger exactly — Slack
+    rejects the request if any are missing or unexpected. Formatting lives in the
+    workflow's "Send a message" step, not here.
+    """
     payload = json.dumps(
-        {"text": f"New {title} is live: {bag['url']}", "blocks": blocks}
+        {
+            "title": describe(bag),
+            "price": bag["price"],
+            "url": bag["url"],
+            "image": bag["image"] or "",
+        }
     ).encode()
     request = urllib.request.Request(
         webhook_url,
@@ -139,8 +137,15 @@ def notify(webhook_url, bag):
         headers={"Content-Type": "application/json"},
         method="POST",
     )
-    with urllib.request.urlopen(request, timeout=TIMEOUT) as response:
-        response.read()
+    try:
+        with urllib.request.urlopen(request, timeout=TIMEOUT) as response:
+            body = response.read().decode("utf-8", "replace")
+    except urllib.error.HTTPError as exc:
+        raise RuntimeError(f"Slack returned HTTP {exc.code}: {exc.read()[:200]!r}") from exc
+    # Slack answers 200 with {"ok": false, "error": ...} for a bad payload, so a
+    # silent rejection would otherwise look like a delivered notification.
+    if '"ok":false' in body.replace(" ", ""):
+        raise RuntimeError(f"Slack rejected the payload: {body[:200]}")
 
 
 def main():
@@ -174,7 +179,11 @@ def main():
 
     new_bags = [bag for bag in bags if bag["sku"] not in seen]
     for bag in new_bags:
-        notify(webhook_url, bag)
+        try:
+            notify(webhook_url, bag)
+        except (RuntimeError, urllib.error.URLError, OSError) as exc:
+            # Leave state untouched so this bag is retried on the next run.
+            die(f"could not notify about {bag['sku']}: {exc}")
         print(f"notified: {bag['sku']} {describe(bag)}")
 
     save_seen(seen | {bag["sku"] for bag in bags})
