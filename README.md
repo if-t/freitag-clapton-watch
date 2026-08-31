@@ -3,7 +3,7 @@
 Every FREITAG bag is a unique piece, so the
 [F155 CLAPTON page](https://freitag.ch/en_DE/products/f155-clapton) lists dozens of
 individual backpacks that each have their own SKU and tarp pattern — and the good ones sell
-out. This checks that page every 5 minutes and sends a Slack message with a direct link
+out. This checks that page every 10 minutes and sends a Slack message with a direct link
 whenever a bag appears that it hasn't seen before.
 
 ## How it works
@@ -15,7 +15,7 @@ list, so "a SKU we haven't seen before" is a reliable definition of "a new bag i
 
 Seen SKUs live in `state/seen.json`, which the GitHub Actions workflow commits back to the
 repo after each change. Requests are gzipped (164 KB instead of 901 KB) to keep the
-5-minute polling light on freitag.ch.
+10-minute polling light on freitag.ch (~144 requests, ~23 MB a day).
 
 Python 3.12, standard library only — no dependencies.
 
@@ -44,7 +44,7 @@ Python 3.12, standard library only — no dependencies.
    gh secret set SLACK_WEBHOOK_URL   # paste the URL when prompted
    ```
 
-3. That's it — the workflow runs on its own every 5 minutes. Trigger it by hand with:
+3. That's it — the workflow runs on its own every 10 minutes. Trigger it by hand with:
 
    ```sh
    gh workflow run check.yml

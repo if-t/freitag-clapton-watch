@@ -2,9 +2,10 @@ name: F155 CLAPTON watch
 
 on:
   schedule:
-    # Every 5 minutes — the shortest interval GitHub Actions allows.
-    # Scheduled runs are best-effort and may drift by a few minutes.
-    - cron: "*/5 * * * *"
+    # Every 10 minutes. GitHub never fired the */5 schedule at all — the most
+    # contended intervals are the first ones its scheduler drops under load.
+    # Scheduled runs remain best-effort and may drift by a few minutes.
+    - cron: "*/10 * * * *"
   workflow_dispatch:
 
 permissions:
